@@ -36,38 +36,38 @@ func new() *ArangoDB {
 }
 
 // Type returns the TypeName for this backend
-func (m *ArangoDB) Type() (string, error) {
+func (a *ArangoDB) Type() (string, error) {
 	return arangoDBTypeName, nil
 }
 
 // Initialize initializes the db plugin
-func (m *ArangoDB) Initialize(ctx context.Context, req dbplugin.InitializeRequest) (dbplugin.InitializeResponse, error) {
-	m.Lock()
-	defer m.Unlock()
+func (a *ArangoDB) Initialize(ctx context.Context, req dbplugin.InitializeRequest) (dbplugin.InitializeResponse, error) {
+	a.Lock()
+	defer a.Unlock()
 
 	return dbplugin.InitializeResponse{}, errors.New("Not implemented")
 }
 
 // DeleteUser deletes a user account
-func (m *ArangoDB) DeleteUser(ctx context.Context, req dbplugin.DeleteUserRequest) (dbplugin.DeleteUserResponse, error) {
-	m.Lock()
-	defer m.Unlock()
+func (a *ArangoDB) DeleteUser(ctx context.Context, req dbplugin.DeleteUserRequest) (dbplugin.DeleteUserResponse, error) {
+	a.Lock()
+	defer a.Unlock()
 
 	return dbplugin.DeleteUserResponse{}, errors.New("Not implemented")
 }
 
 // NewUser creates a new user account
-func (m *ArangoDB) NewUser(ctx context.Context, req dbplugin.NewUserRequest) (dbplugin.NewUserResponse, error) {
-	m.Lock()
-	defer m.Unlock()
+func (a *ArangoDB) NewUser(ctx context.Context, req dbplugin.NewUserRequest) (dbplugin.NewUserResponse, error) {
+	a.Lock()
+	defer a.Unlock()
 
 	return dbplugin.NewUserResponse{}, errors.New("Not implemented")
 }
 
 // UpdateUser updates a user account
-func (m *ArangoDB) UpdateUser(ctx context.Context, req dbplugin.UpdateUserRequest) (dbplugin.UpdateUserResponse, error) {
-	m.Lock()
-	defer m.Unlock()
+func (a *ArangoDB) UpdateUser(ctx context.Context, req dbplugin.UpdateUserRequest) (dbplugin.UpdateUserResponse, error) {
+	a.Lock()
+	defer a.Unlock()
 
 	return dbplugin.UpdateUserResponse{}, errors.New("Not implemented")
 }
