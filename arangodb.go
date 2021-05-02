@@ -3,17 +3,24 @@ package arangodb
 import (
 	"context"
 	"errors"
+	"fmt"
 
+	driver "github.com/arangodb/go-driver"
 	dbplugin "github.com/hashicorp/vault/sdk/database/dbplugin/v5"
+	"github.com/hashicorp/vault/sdk/helper/strutil"
+	"github.com/hashicorp/vault/sdk/helper/template"
 )
 
 const (
-	arangoDBTypeName = "arangodb"
+	arangoDBTypeName        = "arangodb"
+	defaultUsernameTemplate = `{{ printf "v-%s-%s-%s-%s" (.DisplayName | truncate 15) (.RoleName | truncate 15) (random 20) (unix_time) | truncate 100 }}`
 )
 
 // ArangoDB is an implementation of Database interface
 type ArangoDB struct {
 	*arangoDBConnectionProducer
+
+	usernameProducer template.StringTemplate
 }
 
 var _ dbplugin.Database = &ArangoDB{}
@@ -45,7 +52,45 @@ func (a *ArangoDB) Initialize(ctx context.Context, req dbplugin.InitializeReques
 	a.Lock()
 	defer a.Unlock()
 
-	return dbplugin.InitializeResponse{}, errors.New("Not implemented")
+	usernameTemplate, err := strutil.GetString(req.Config, "username_template")
+	if err != nil {
+		return dbplugin.InitializeResponse{}, fmt.Errorf("failed to retrieve username_template: %w", err)
+	}
+	if usernameTemplate == "" {
+		usernameTemplate = defaultUsernameTemplate
+	}
+
+	up, err := template.NewTemplate(template.Template(usernameTemplate))
+	if err != nil {
+		return dbplugin.InitializeResponse{}, fmt.Errorf("unable to initialize username template: %w", err)
+	}
+	a.usernameProducer = up
+
+	_, err = a.usernameProducer.Generate(dbplugin.UsernameMetadata{})
+	if err != nil {
+		return dbplugin.InitializeResponse{}, fmt.Errorf("invalid username template: %w", err)
+	}
+
+	// Set initialized to true at this point since all fields are set,
+	// and the connection can be established at a later time.
+	a.Initialized = true
+
+	if req.VerifyConnection {
+		_, err := a.Connection(ctx)
+		if err != nil {
+			return dbplugin.InitializeResponse{}, fmt.Errorf("failed to verify connection: %w", err)
+		}
+
+		_, err = a.client.Version(ctx)
+		if err != nil {
+			return dbplugin.InitializeResponse{}, fmt.Errorf("failed to verify connection: %w", err)
+		}
+	}
+
+	resp := dbplugin.InitializeResponse{
+		Config: req.Config,
+	}
+	return resp, nil
 }
 
 // DeleteUser deletes a user account
@@ -53,7 +98,13 @@ func (a *ArangoDB) DeleteUser(ctx context.Context, req dbplugin.DeleteUserReques
 	a.Lock()
 	defer a.Unlock()
 
-	return dbplugin.DeleteUserResponse{}, errors.New("Not implemented")
+	user, err := a.client.User(ctx, req.Username)
+	if err != nil {
+		return dbplugin.DeleteUserResponse{}, err
+	}
+
+	err = user.Remove(ctx)
+	return dbplugin.DeleteUserResponse{}, err
 }
 
 // NewUser creates a new user account
@@ -61,7 +112,24 @@ func (a *ArangoDB) NewUser(ctx context.Context, req dbplugin.NewUserRequest) (db
 	a.Lock()
 	defer a.Unlock()
 
-	return dbplugin.NewUserResponse{}, errors.New("Not implemented")
+	username, err := a.usernameProducer.Generate(req.UsernameConfig)
+	if err != nil {
+		return dbplugin.NewUserResponse{}, err
+	}
+
+	options := driver.UserOptions{
+		Password: req.Password,
+	}
+	user, err := a.client.CreateUser(ctx, username, &options)
+	if err != nil {
+		return dbplugin.NewUserResponse{}, err
+	}
+
+	resp := dbplugin.NewUserResponse{
+		Username: user.Name(),
+	}
+
+	return resp, nil
 }
 
 // UpdateUser updates a user account

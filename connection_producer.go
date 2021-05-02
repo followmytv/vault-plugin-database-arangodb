@@ -19,7 +19,7 @@ type arangoDBConnectionProducer struct {
 	// RawConfig    map[string]interface{}
 	Type         string
 	clientConfig *driver.ClientConfig
-	client       *driver.Client
+	client       driver.Client
 	sync.Mutex
 }
 
@@ -37,7 +37,7 @@ func (c *arangoDBConnectionProducer) Connection(ctx context.Context) (interface{
 	return c.client, nil
 }
 
-func createClient(ctx context.Context, connURL string, clientConfig *driver.ClientConfig) (client *driver.Client, err error) {
+func createClient(ctx context.Context, connURL string, clientConfig *driver.ClientConfig) (client driver.Client, err error) {
 	conn, err := http.NewConnection(http.ConnectionConfig{
 		Endpoints: []string{connURL},
 	})
@@ -52,7 +52,7 @@ func createClient(ctx context.Context, connURL string, clientConfig *driver.Clie
 		return nil, err
 	}
 
-	return &c, nil
+	return c, nil
 }
 
 // Close terminates the database connection.

@@ -24,12 +24,16 @@ start:
 enable:
 	vault secrets enable database
 
-configure:
 	vault write database/config/arango \
     plugin_name=arangodb-database-plugin \
     allowed_roles="my-role" \
     username="root" \
     password="root"
+
+	vault write database/roles/my-role \
+    db_name=arango \
+    default_ttl="1m" \
+    max_ttl="24h"
 
 clean:
 	rm -f ./build/plugins/arangodb-database-plugin
