@@ -22,7 +22,14 @@ start:
 	vault server -dev -dev-root-token-id=root -dev-plugin-dir=./build/plugins/
 
 enable:
-	vault secrets enable -path=arangodb arangodb-database-plugin
+	vault secrets enable database
+
+configure:
+	vault write database/config/arango \
+    plugin_name=arangodb-database-plugin \
+    allowed_roles="my-role" \
+    username="root" \
+    password="root"
 
 clean:
 	rm -f ./build/plugins/arangodb-database-plugin
