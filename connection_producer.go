@@ -79,7 +79,7 @@ func (a *arangoDBConnectionProducer) Connection(ctx context.Context) (interface{
 		return a.client, nil
 	}
 
-	client, err := createClient(ctx, a.ConnectionURL, &driver.ClientConfig{})
+	client, err := a.createClient()
 	if err != nil {
 		return nil, err
 	}
@@ -90,17 +90,21 @@ func (a *arangoDBConnectionProducer) Connection(ctx context.Context) (interface{
 	return a.client, nil
 }
 
-func createClient(ctx context.Context, connURL string, clientConfig *driver.ClientConfig) (client driver.Client, err error) {
+func (a *arangoDBConnectionProducer) createClient() (driver.Client, error) {
 	conn, err := http.NewConnection(http.ConnectionConfig{
-		Endpoints: []string{connURL},
+		Endpoints: []string{a.ConnectionURL},
 	})
 	if err != nil {
 		return nil, err
 	}
 
+	auth := driver.BasicAuthentication(a.Username, a.Password)
+
 	c, err := driver.NewClient(driver.ClientConfig{
-		Connection: conn,
+		Connection:     conn,
+		Authentication: auth,
 	})
+
 	if err != nil {
 		return nil, err
 	}
