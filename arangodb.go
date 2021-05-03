@@ -4,12 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 
 	driver "github.com/arangodb/go-driver"
 	dbplugin "github.com/hashicorp/vault/sdk/database/dbplugin/v5"
 	"github.com/hashicorp/vault/sdk/database/helper/dbutil"
-	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/hashicorp/vault/sdk/helper/template"
 )
 
@@ -43,17 +41,17 @@ type userCreateStatement struct {
 
 var _ dbplugin.Database = &ArangoDB{}
 
-// New configures and returns Mock backends
+// New returns a new ArangoDB instance
 func New() (interface{}, error) {
 	db := new()
 	dbType := dbplugin.NewDatabaseErrorSanitizerMiddleware(db, db.secretValues)
+
 	return dbType, nil
 }
 
 func new() *ArangoDB {
-	connProducer := &arangoDBConnectionProducer{
-		Type: arangoDBTypeName,
-	}
+	connProducer := &arangoDBConnectionProducer{}
+	connProducer.Type = arangoDBTypeName
 
 	return &ArangoDB{
 		arangoDBConnectionProducer: connProducer,
@@ -63,52 +61,6 @@ func new() *ArangoDB {
 // Type returns the TypeName for this backend
 func (a *ArangoDB) Type() (string, error) {
 	return arangoDBTypeName, nil
-}
-
-// Initialize initializes the db plugin
-func (a *ArangoDB) Initialize(ctx context.Context, req dbplugin.InitializeRequest) (dbplugin.InitializeResponse, error) {
-	a.Lock()
-	defer a.Unlock()
-
-	usernameTemplate, err := strutil.GetString(req.Config, "username_template")
-	if err != nil {
-		return dbplugin.InitializeResponse{}, fmt.Errorf("failed to retrieve username_template: %w", err)
-	}
-	if usernameTemplate == "" {
-		usernameTemplate = defaultUsernameTemplate
-	}
-
-	up, err := template.NewTemplate(template.Template(usernameTemplate))
-	if err != nil {
-		return dbplugin.InitializeResponse{}, fmt.Errorf("unable to initialize username template: %w", err)
-	}
-	a.usernameProducer = up
-
-	_, err = a.usernameProducer.Generate(dbplugin.UsernameMetadata{})
-	if err != nil {
-		return dbplugin.InitializeResponse{}, fmt.Errorf("invalid username template: %w", err)
-	}
-
-	// Set initialized to true at this point since all fields are set,
-	// and the connection can be established at a later time.
-	a.Initialized = true
-
-	if req.VerifyConnection {
-		_, err := a.Connection(ctx)
-		if err != nil {
-			return dbplugin.InitializeResponse{}, fmt.Errorf("failed to verify connection: %w", err)
-		}
-
-		_, err = a.client.Version(ctx)
-		if err != nil {
-			return dbplugin.InitializeResponse{}, fmt.Errorf("failed to verify connection: %w", err)
-		}
-	}
-
-	resp := dbplugin.InitializeResponse{
-		Config: req.Config,
-	}
-	return resp, nil
 }
 
 // DeleteUser deletes a user account
