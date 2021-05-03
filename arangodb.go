@@ -60,6 +60,7 @@ func new() *ArangoDB {
 	}
 }
 
+// Initialize sets up the ArangoDB Plugin
 func (a *ArangoDB) Initialize(ctx context.Context, req dbplugin.InitializeRequest) (dbplugin.InitializeResponse, error) {
 	usernameTemplate, err := strutil.GetString(req.Config, "username_template")
 	if err != nil {
