@@ -4,8 +4,8 @@ import (
 	"log"
 	"os"
 
+	arangodb "github.com/followmytv/vault-plugin-database-arangodb"
 	dbplugin "github.com/hashicorp/vault/sdk/database/dbplugin/v5"
-	arangodb "github.com/sarahhenkens/vault-plugin-arangodb"
 )
 
 func main() {
