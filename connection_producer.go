@@ -24,18 +24,25 @@ type arangoDBConnectionProducer struct {
 	sync.Mutex
 }
 
+func (a *arangoDBConnectionProducer) secretValues() map[string]string {
+	return map[string]string{
+		a.Password: "[password]",
+		a.Password: "[password]",
+	}
+}
+
 // Connection creates a database connection
-func (c *arangoDBConnectionProducer) Connection(ctx context.Context) (interface{}, error) {
-	if !c.Initialized {
+func (a *arangoDBConnectionProducer) Connection(ctx context.Context) (interface{}, error) {
+	if !a.Initialized {
 		return nil, connutil.ErrNotInitialized
 	}
 
-	client, err := createClient(ctx, "http://localhost:8529", c.clientConfig)
+	client, err := createClient(ctx, "http://localhost:8529", a.clientConfig)
 	if err != nil {
 		return nil, err
 	}
-	c.client = client
-	return c.client, nil
+	a.client = client
+	return a.client, nil
 }
 
 func createClient(ctx context.Context, connURL string, clientConfig *driver.ClientConfig) (client driver.Client, err error) {
@@ -57,17 +64,11 @@ func createClient(ctx context.Context, connURL string, clientConfig *driver.Clie
 }
 
 // Close terminates the database connection.
-func (c *arangoDBConnectionProducer) Close() error {
-	c.Lock()
-	defer c.Unlock()
+func (a *arangoDBConnectionProducer) Close() error {
+	a.Lock()
+	defer a.Unlock()
 
-	c.client = nil
+	a.client = nil
 
 	return nil
-}
-
-func (c *arangoDBConnectionProducer) secretValues() map[string]string {
-	return map[string]string{
-		c.Password: "[password]",
-	}
 }
