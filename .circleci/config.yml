@@ -2,8 +2,6 @@
 version: 2.1
 jobs:
   build:
-    machine:
-        docker_layer_caching: true
     working_directory: ~/repo
     docker:
       - image: circleci/golang:1.15.8
@@ -19,6 +17,9 @@ jobs:
           key: go-mod-v4-{{ checksum "go.sum" }}
           paths:
             - "/go/pkg/mod"
+      - setup_remote_docker:
+          version: 19.03.13
+          docker_layer_caching: true
       - run:
           name: Run tests
           command: |
