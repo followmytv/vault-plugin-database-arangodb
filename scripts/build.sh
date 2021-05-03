@@ -2,8 +2,7 @@
 set -e
 
 MNT_PATH="arangodb"
-PLUGIN_NAME="vault-plugin-database-arangodb"
-PLUGIN_CATALOG_NAME="arangodb"
+PLUGIN_NAME="arangodb-database-plugin"
 
 #
 # Helper script for local development. Automatically builds and registers the
@@ -56,7 +55,7 @@ go build -o "$SCRATCH/plugins/$PLUGIN_NAME" "./cmd/arangodb-database-plugin"
 SHASUM=$(shasum -a 256 "$SCRATCH/plugins/$PLUGIN_NAME" | cut -d " " -f1)
 
 echo "    Registering plugin"
-vault write sys/plugins/catalog/$PLUGIN_CATALOG_NAME \
+vault write sys/plugins/catalog/$PLUGIN_NAME \
   sha_256="$SHASUM" \
   command="$PLUGIN_NAME"
 

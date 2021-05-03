@@ -36,8 +36,6 @@ start:
 	vault server -dev -dev-root-token-id=root -dev-plugin-dir=./build/plugins/
 
 enable:
-	vault secrets enable database
-
 	vault write database/config/arango \
     plugin_name=arangodb-database-plugin \
     allowed_roles="my-role" \
