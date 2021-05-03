@@ -16,7 +16,7 @@ endif
 all: fmt build start
 
 build:
-	GOOS=$(OS) GOARCH="$(GOARCH)" go build -o ./build/plugins/arangodb-database-plugin ./arangodb-database-plugin/main.go
+	GOOS=$(OS) GOARCH="$(GOARCH)" go build -o ./build/plugins/arangodb-database-plugin ./cmd/arangodb-database-plugin/main.go
 
 start:
 	vault server -dev -dev-root-token-id=root -dev-plugin-dir=./build/plugins/
