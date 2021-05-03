@@ -8,4 +8,5 @@ require (
 	github.com/hashicorp/vault v1.7.1
 	github.com/hashicorp/vault/sdk v0.2.1-0.20210419223509-b296e151b5b3
 	github.com/mitchellh/mapstructure v1.3.3
+	gotest.tools/gotestsum v1.6.4 // indirect
 )
