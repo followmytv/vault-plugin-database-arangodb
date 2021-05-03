@@ -2,11 +2,13 @@ package arangodb
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
 	driver "github.com/arangodb/go-driver"
 	dbplugin "github.com/hashicorp/vault/sdk/database/dbplugin/v5"
+	"github.com/hashicorp/vault/sdk/database/helper/dbutil"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/hashicorp/vault/sdk/helper/template"
 )
@@ -21,6 +23,22 @@ type ArangoDB struct {
 	*arangoDBConnectionProducer
 
 	usernameProducer template.StringTemplate
+}
+
+type databaseGrant struct {
+	Db     string       `json:"db"`
+	Access driver.Grant `json:"access"`
+}
+
+type collectionGrant struct {
+	Db         string       `json:"db"`
+	Collection string       `json:"collection,omitempty"`
+	Access     driver.Grant `json:"access"`
+}
+
+type userCreateStatement struct {
+	DatabaseGrants   []databaseGrant   `json:"database_grants"`
+	CollectionGrants []collectionGrant `json:"collection_grants"`
 }
 
 var _ dbplugin.Database = &ArangoDB{}
@@ -112,17 +130,69 @@ func (a *ArangoDB) NewUser(ctx context.Context, req dbplugin.NewUserRequest) (db
 	a.Lock()
 	defer a.Unlock()
 
+	if len(req.Statements.Commands) == 0 {
+		return dbplugin.NewUserResponse{}, dbutil.ErrEmptyCreationStatement
+	}
+
 	username, err := a.usernameProducer.Generate(req.UsernameConfig)
 	if err != nil {
 		return dbplugin.NewUserResponse{}, err
 	}
 
+	// Unmarshal statements.CreationStatements
+	var cs userCreateStatement
+	err = json.Unmarshal([]byte(req.Statements.Commands[0]), &cs)
+	if err != nil {
+		return dbplugin.NewUserResponse{}, err
+	}
+
+	// Create the user record itself
 	options := driver.UserOptions{
 		Password: req.Password,
 	}
+
 	user, err := a.client.CreateUser(ctx, username, &options)
 	if err != nil {
 		return dbplugin.NewUserResponse{}, err
+	}
+
+	// Assign database grants
+	for _, grant := range cs.DatabaseGrants {
+		database, err := a.client.Database(ctx, grant.Db)
+		if err != nil {
+			return dbplugin.NewUserResponse{}, err
+		}
+
+		err = user.SetDatabaseAccess(ctx, database, grant.Access)
+		if err != nil {
+			return dbplugin.NewUserResponse{}, err
+		}
+	}
+
+	// Assign collection grants
+	for _, grant := range cs.CollectionGrants {
+		database, err := a.client.Database(ctx, grant.Db)
+		if err != nil {
+			return dbplugin.NewUserResponse{}, err
+		}
+
+		// Set the default grant if no specific collection was specified
+		if grant.Collection == "" {
+			err = user.SetCollectionAccess(ctx, database, grant.Access)
+			if err != nil {
+				return dbplugin.NewUserResponse{}, err
+			}
+		} else {
+			collection, err := database.Collection(ctx, grant.Collection)
+			if err != nil {
+				return dbplugin.NewUserResponse{}, err
+			}
+
+			err = user.SetCollectionAccess(ctx, collection, grant.Access)
+			if err != nil {
+				return dbplugin.NewUserResponse{}, err
+			}
+		}
 	}
 
 	resp := dbplugin.NewUserResponse{

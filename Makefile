@@ -32,6 +32,7 @@ enable:
 
 	vault write database/roles/my-role \
     db_name=arango \
+		creation_statements='{"collection_grants": [{"db": "hive", "access": "rw"}]}' \
     default_ttl="1m" \
     max_ttl="24h"
 
