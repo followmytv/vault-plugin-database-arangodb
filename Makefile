@@ -40,7 +40,8 @@ enable:
     plugin_name=arangodb-database-plugin \
     allowed_roles="my-role" \
     username="root" \
-    password="root"
+    password="root" \
+    connection_url="http://localhost:8529"
 
 	vault write database/roles/my-role \
     db_name=arango \

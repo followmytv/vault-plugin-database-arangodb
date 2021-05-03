@@ -12,8 +12,9 @@ import (
 // arangoDBConnectionProducer implements ConnectionProducer and provides an
 // interface for databases to make connections.
 type arangoDBConnectionProducer struct {
-	Username string `json:"username" structs:"username" mapstructure:"username"`
-	Password string `json:"password" structs:"password" mapstructure:"password"`
+	Username      string `json:"username" structs:"username" mapstructure:"username"`
+	Password      string `json:"password" structs:"password" mapstructure:"password"`
+	ConnectionURL string `json:"connection_url" structs:"connection_url" mapstructure:"connection_url"`
 
 	Initialized bool
 	// RawConfig    map[string]interface{}
