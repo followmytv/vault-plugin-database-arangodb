@@ -8,6 +8,7 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/arangodb/go-driver"
 	"github.com/arangodb/go-driver/http"
@@ -16,6 +17,8 @@ import (
 	dbplugin "github.com/hashicorp/vault/sdk/database/dbplugin/v5"
 	dbtesting "github.com/hashicorp/vault/sdk/database/dbplugin/v5/testing"
 )
+
+const arangoEmptyGrants = `{}`
 
 type Config struct {
 	docker.ServiceURL
@@ -38,6 +41,14 @@ func (c *Config) clientConfig() driver.ClientConfig {
 		Connection:     conn,
 		Authentication: driver.BasicAuthentication(c.Username, c.Password),
 	}
+}
+
+func copyConfig(config map[string]interface{}) map[string]interface{} {
+	newConfig := map[string]interface{}{}
+	for k, v := range config {
+		newConfig[k] = v
+	}
+	return newConfig
 }
 
 func prepareArangoDBTestContainer(t *testing.T) (func(), *Config) {
@@ -118,10 +129,36 @@ func TestArangoDB_Initialize(t *testing.T) {
 	}
 }
 
-func copyConfig(config map[string]interface{}) map[string]interface{} {
-	newConfig := map[string]interface{}{}
-	for k, v := range config {
-		newConfig[k] = v
+func TestMongoDB_CreateUser(t *testing.T) {
+	cleanup, config := prepareArangoDBTestContainer(t)
+	defer cleanup()
+
+	db := new()
+	defer dbtesting.AssertClose(t, db)
+
+	initReq := dbplugin.InitializeRequest{
+		Config: map[string]interface{}{
+			"connection_url": config.URL().String(),
+			"username":       "root",
+			"password":       "root",
+		},
+		VerifyConnection: true,
 	}
-	return newConfig
+	dbtesting.AssertInitialize(t, db, initReq)
+
+	password := "myreallysecurepassword"
+	createReq := dbplugin.NewUserRequest{
+		UsernameConfig: dbplugin.UsernameMetadata{
+			DisplayName: "test",
+			RoleName:    "test",
+		},
+		Statements: dbplugin.Statements{
+			Commands: []string{arangoEmptyGrants},
+		},
+		Password:   password,
+		Expiration: time.Now().Add(time.Minute),
+	}
+	_ = dbtesting.AssertNewUser(t, db, createReq)
+
+	// todo: assertCredsExist(t, createResp.Username, password, connURL)
 }
