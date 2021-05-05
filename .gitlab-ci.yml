@@ -1,5 +1,8 @@
 image: golang:1.16
 
+services:
+  - docker:dind
+
 cache:
   paths:
     - /apt-cache
