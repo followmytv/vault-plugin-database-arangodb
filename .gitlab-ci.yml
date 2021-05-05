@@ -3,6 +3,10 @@ image: golang:1.16
 services:
   - docker:dind
 
+variables:
+  DOCKER_DRIVER: overlay
+
+
 cache:
   paths:
     - /apt-cache
@@ -21,4 +25,6 @@ before_script:
 unit_tests:
   stage: test
   script:
+    - docker version
+    - docker info
     - make test
