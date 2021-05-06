@@ -51,6 +51,40 @@ func copyConfig(config map[string]interface{}) map[string]interface{} {
 	return newConfig
 }
 
+func assertCredsExist(t testing.TB, address, username, password string) {
+	t.Helper()
+	err := testCredsExist(address, username, password)
+	if err != nil {
+		t.Fatalf("Could not log in as %q", username)
+	}
+}
+
+func testCredsExist(address, username, password string) error {
+	conn, err := http.NewConnection(http.ConnectionConfig{
+		Endpoints: []string{address},
+	})
+
+	if err != nil {
+		log.Fatalf("Unable to create connection: %s", err)
+	}
+
+	conf := driver.ClientConfig{
+		Connection:     conn,
+		Authentication: driver.BasicAuthentication(username, password),
+	}
+	client, err := driver.NewClient(conf)
+	if err != nil {
+		return errwrap.Wrapf("error creating ArangoDB client: {{err}}", err)
+	}
+
+	_, err = client.User(context.Background(), username)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func prepareArangoDBTestContainer(t *testing.T) (func(), *Config) {
 	c := &Config{
 		Username: "root",
@@ -129,7 +163,7 @@ func TestArangoDB_Initialize(t *testing.T) {
 	}
 }
 
-func TestMongoDB_CreateUser(t *testing.T) {
+func TestArangoDB_CreateUser(t *testing.T) {
 	cleanup, config := prepareArangoDBTestContainer(t)
 	defer cleanup()
 
@@ -158,7 +192,6 @@ func TestMongoDB_CreateUser(t *testing.T) {
 		Password:   password,
 		Expiration: time.Now().Add(time.Minute),
 	}
-	_ = dbtesting.AssertNewUser(t, db, createReq)
-
-	// todo: assertCredsExist(t, createResp.Username, password, connURL)
+	createResp := dbtesting.AssertNewUser(t, db, createReq)
+	assertCredsExist(t, config.URL().String(), createResp.Username, password)
 }
