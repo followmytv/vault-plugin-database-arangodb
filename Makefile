@@ -39,8 +39,8 @@ enable:
 	vault write database/config/arango \
     plugin_name=arangodb-database-plugin \
     allowed_roles="my-role, default-role" \
-    username="root" \
-    password="root" \
+    username="vault" \
+    password="vault" \
     connection_url="http://localhost:8529"
 
 	vault write database/roles/my-role \
