@@ -17,6 +17,7 @@ unit_tests:
     - arangodb
   variables:
     ARANGODB_HOST: arangodb:8529
+    ARANGO_ROOT_PASSWORD: root
   script:
     - go mod download
     - make test
