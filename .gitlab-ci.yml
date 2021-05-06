@@ -1,5 +1,3 @@
-image: golang:1.16
-
 cache:
   paths:
     - /apt-cache
@@ -14,6 +12,11 @@ stages:
 
 unit_tests:
   stage: test
+  image: golang:1.16
+  services:
+    - arangodb
+  variables:
+    ARANGODB_HOST: arangodb:8529
   script:
     - go mod download
     - make test
