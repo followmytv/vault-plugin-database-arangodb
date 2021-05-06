@@ -256,3 +256,35 @@ func TestArangoDB_CreateUser_DatabaseGrant(t *testing.T) {
 	createResp := dbtesting.AssertNewUser(t, db, createReq)
 	assertCredsExist(t, config.URL().String(), createResp.Username, password)
 }
+
+func TestArangoDBDBRotateRootCredentials(t *testing.T) {
+	cleanup, config := prepareArangoDBTestContainer(t)
+	defer cleanup()
+
+	db := new()
+	defer dbtesting.AssertClose(t, db)
+
+	initReq := dbplugin.InitializeRequest{
+		Config: map[string]interface{}{
+			"connection_url": config.URL().String(),
+			"username":       rootUsername,
+			"password":       rootPassword,
+		},
+		VerifyConnection: true,
+	}
+	dbtesting.AssertInitialize(t, db, initReq)
+
+	updateReq := dbplugin.UpdateUserRequest{
+		Username: rootUsername,
+		Password: &dbplugin.ChangePassword{
+			NewPassword: "newpassword",
+		},
+	}
+
+	_, err := db.UpdateUser(context.Background(), updateReq)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	assertCredsExist(t, config.URL().String(), rootUsername, "newpassword")
+}

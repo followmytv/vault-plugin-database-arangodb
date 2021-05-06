@@ -3,7 +3,6 @@ package arangodb
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	driver "github.com/arangodb/go-driver"
@@ -172,10 +171,24 @@ func (a *ArangoDB) NewUser(ctx context.Context, req dbplugin.NewUserRequest) (db
 	return resp, nil
 }
 
-// UpdateUser updates a user account
+// UpdateUser updates a user's password
 func (a *ArangoDB) UpdateUser(ctx context.Context, req dbplugin.UpdateUserRequest) (dbplugin.UpdateUserResponse, error) {
 	a.Lock()
 	defer a.Unlock()
 
-	return dbplugin.UpdateUserResponse{}, errors.New("Not implemented")
+	if req.Password == nil {
+		return dbplugin.UpdateUserResponse{}, nil
+	}
+
+	user, err := a.client.User(ctx, req.Username)
+	if err != nil {
+		return dbplugin.UpdateUserResponse{}, err
+	}
+
+	err = user.Update(ctx, driver.UserOptions{Password: req.Password.NewPassword})
+	if err != nil {
+		return dbplugin.UpdateUserResponse{}, err
+	}
+
+	return dbplugin.UpdateUserResponse{}, nil
 }
