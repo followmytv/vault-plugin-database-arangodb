@@ -163,7 +163,9 @@ func TestArangoDB_Initialize(t *testing.T) {
 	}
 }
 
-func TestArangoDB_CreateUser(t *testing.T) {
+// Tests creation of a user without specifying any create statements, it should
+// result in a user without any permissions set on databases or collections.
+func TestArangoDB_CreateUser_Default(t *testing.T) {
 	cleanup, config := prepareArangoDBTestContainer(t)
 	defer cleanup()
 
@@ -187,7 +189,7 @@ func TestArangoDB_CreateUser(t *testing.T) {
 			RoleName:    "test",
 		},
 		Statements: dbplugin.Statements{
-			Commands: []string{arangoEmptyGrants},
+			Commands: []string{},
 		},
 		Password:   password,
 		Expiration: time.Now().Add(time.Minute),

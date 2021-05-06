@@ -38,7 +38,7 @@ start:
 enable:
 	vault write database/config/arango \
     plugin_name=arangodb-database-plugin \
-    allowed_roles="my-role" \
+    allowed_roles="my-role, default-role" \
     username="root" \
     password="root" \
     connection_url="http://localhost:8529"
@@ -46,6 +46,11 @@ enable:
 	vault write database/roles/my-role \
     db_name=arango \
 		creation_statements='{"collection_grants": [{"db": "hive", "access": "rw"}]}' \
+    default_ttl="1m" \
+    max_ttl="24h"
+
+	vault write database/roles/default-role \
+    db_name=arango \
     default_ttl="1m" \
     max_ttl="24h"
 

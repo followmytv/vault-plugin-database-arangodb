@@ -8,7 +8,6 @@ import (
 
 	driver "github.com/arangodb/go-driver"
 	dbplugin "github.com/hashicorp/vault/sdk/database/dbplugin/v5"
-	"github.com/hashicorp/vault/sdk/database/helper/dbutil"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/hashicorp/vault/sdk/helper/template"
 )
@@ -103,10 +102,6 @@ func (a *ArangoDB) NewUser(ctx context.Context, req dbplugin.NewUserRequest) (db
 	a.Lock()
 	defer a.Unlock()
 
-	if len(req.Statements.Commands) == 0 {
-		return dbplugin.NewUserResponse{}, dbutil.ErrEmptyCreationStatement
-	}
-
 	username, err := a.usernameProducer.Generate(req.UsernameConfig)
 	if err != nil {
 		return dbplugin.NewUserResponse{}, err
@@ -114,9 +109,11 @@ func (a *ArangoDB) NewUser(ctx context.Context, req dbplugin.NewUserRequest) (db
 
 	// Unmarshal statements.CreationStatements
 	var cs userCreateStatement
-	err = json.Unmarshal([]byte(req.Statements.Commands[0]), &cs)
-	if err != nil {
-		return dbplugin.NewUserResponse{}, err
+	if len(req.Statements.Commands) != 0 {
+		err = json.Unmarshal([]byte(req.Statements.Commands[0]), &cs)
+		if err != nil {
+			return dbplugin.NewUserResponse{}, err
+		}
 	}
 
 	// Create the user record itself
