@@ -1,12 +1,5 @@
 image: golang:1.16
 
-services:
-  - docker:dind
-
-variables:
-  DOCKER_DRIVER: overlay
-
-
 cache:
   paths:
     - /apt-cache
@@ -17,14 +10,36 @@ cache:
 
 stages:
   - test
-  - build
-
-before_script:
-  - go mod download
+  - release
 
 unit_tests:
   stage: test
   script:
-    - docker version
-    - docker info
+    - go mod download
     - make test
+
+release:
+  stage: release
+  image: docker:stable
+  services:
+    - docker:dind
+
+  variables:
+    DOCKER_REGISTRY: $CI_REGISTRY
+    DOCKER_USERNAME: $CI_REGISTRY_USER
+    DOCKER_PASSWORD: $CI_REGISTRY_PASSWORD
+    GIT_DEPTH: 0
+
+  only:
+    refs:
+      - tags
+
+  script: |
+    docker run --rm --privileged \
+      -v $PWD:/go/src/gitlab.com/followmytv/vault-plugin-database-arangodb \
+      -w /go/src/gitlab.com/followmytv/vault-plugin-database-arangodb \
+      -v /var/run/docker.sock:/var/run/docker.sock \
+      -e DOCKER_USERNAME -e DOCKER_PASSWORD -e DOCKER_REGISTRY  \
+      -e GITLAB_TOKEN \
+      goreleaser/goreleaser release --rm-dist
+
