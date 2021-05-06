@@ -18,7 +18,12 @@ import (
 	dbtesting "github.com/hashicorp/vault/sdk/database/dbplugin/v5/testing"
 )
 
-const arangoEmptyGrants = `{}`
+const arangoDatabaseGrant = `{"database_grants": [{"db": "db1", "access": "ro"}]}`
+
+const (
+	rootUsername = "root"
+	rootPassword = "root"
+)
 
 type Config struct {
 	docker.ServiceURL
@@ -59,7 +64,7 @@ func assertCredsExist(t testing.TB, address, username, password string) {
 	}
 }
 
-func testCredsExist(address, username, password string) error {
+func createClient(address, username, password string) driver.Client {
 	conn, err := http.NewConnection(http.ConnectionConfig{
 		Endpoints: []string{address},
 	})
@@ -72,17 +77,30 @@ func testCredsExist(address, username, password string) error {
 		Connection:     conn,
 		Authentication: driver.BasicAuthentication(username, password),
 	}
+
 	client, err := driver.NewClient(conf)
 	if err != nil {
-		return errwrap.Wrapf("error creating ArangoDB client: {{err}}", err)
+		log.Fatalf("error creating ArangoDB client: %s", err)
 	}
 
-	_, err = client.User(context.Background(), username)
+	return client
+}
+
+func testCredsExist(address, username, password string) error {
+	client := createClient(address, username, password)
+
+	_, err := client.User(context.Background(), username)
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func createDatabase(address, username, password, database string) error {
+	client := createClient(address, username, password)
+	_, err := client.CreateDatabase(context.Background(), database, &driver.CreateDatabaseOptions{})
+	return err
 }
 
 func prepareArangoDBTestContainer(t *testing.T) (func(), *Config) {
@@ -140,8 +158,8 @@ func TestArangoDB_Initialize(t *testing.T) {
 
 	pluginConfig := map[string]interface{}{
 		"connection_url": config.URL().String(),
-		"username":       "root",
-		"password":       "root",
+		"username":       rootUsername,
+		"password":       rootPassword,
 	}
 
 	// Make a copy since the original map could be modified by the Initialize call
@@ -175,8 +193,8 @@ func TestArangoDB_CreateUser_Default(t *testing.T) {
 	initReq := dbplugin.InitializeRequest{
 		Config: map[string]interface{}{
 			"connection_url": config.URL().String(),
-			"username":       "root",
-			"password":       "root",
+			"username":       rootUsername,
+			"password":       rootPassword,
 		},
 		VerifyConnection: true,
 	}
@@ -190,6 +208,47 @@ func TestArangoDB_CreateUser_Default(t *testing.T) {
 		},
 		Statements: dbplugin.Statements{
 			Commands: []string{},
+		},
+		Password:   password,
+		Expiration: time.Now().Add(time.Minute),
+	}
+	createResp := dbtesting.AssertNewUser(t, db, createReq)
+	assertCredsExist(t, config.URL().String(), createResp.Username, password)
+}
+
+// Tests creation of a user without specifying any create statements, it should
+// result in a user without any permissions set on databases or collections.
+func TestArangoDB_CreateUser_DatabaseGrant(t *testing.T) {
+	cleanup, config := prepareArangoDBTestContainer(t)
+	defer cleanup()
+
+	// Make sure we create our neccesary database
+	err := createDatabase(config.URL().String(), rootUsername, rootPassword, "db1")
+	if err != nil {
+		t.Fatalf("Failed to create new database: %s", err)
+	}
+
+	db := new()
+	defer dbtesting.AssertClose(t, db)
+
+	initReq := dbplugin.InitializeRequest{
+		Config: map[string]interface{}{
+			"connection_url": config.URL().String(),
+			"username":       rootUsername,
+			"password":       rootPassword,
+		},
+		VerifyConnection: true,
+	}
+	dbtesting.AssertInitialize(t, db, initReq)
+
+	password := "new-passwd"
+	createReq := dbplugin.NewUserRequest{
+		UsernameConfig: dbplugin.UsernameMetadata{
+			DisplayName: "test",
+			RoleName:    "test",
+		},
+		Statements: dbplugin.Statements{
+			Commands: []string{arangoDatabaseGrant},
 		},
 		Password:   password,
 		Expiration: time.Now().Add(time.Minute),
